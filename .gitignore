@@ -1,1 +1,4 @@
 profile-*.html
+*.so
+*.dll
+*.o

@@ -2,6 +2,13 @@
 
 use v6;
 
+use NativeCall;
+
+sub i2f(int64) returns num64 is native("aliaser", v1) { * }
+sub f2i(num64) returns int64 is native("aliaser", v1) { * }
+
+my $U = "\e[1m\e[30mU\e[0m";
+
 grammar U {
   token TOP { ^ <statements> $ }
   token statements {
@@ -65,8 +72,11 @@ grammar U {
   token pl3 {
     [ <pl2> [ $<op> = [ '^' | '.^' ] <pl2> ]* ]
   }
+  token beo {
+    <[ # $ ]>+ '^'?
+  }
   token pl4 {
-    [ <pl3> [ $<op> = [ '/' | './' | '.*' | '+<' | '+>' | '+<^' | '+>^' ]? <pl3> ]* ]
+    [ <pl3> [ $<op> = [ '/' | './' | '.*' | '+<' | '+>' | '+<^' | '+>^' | <beo> ]? <pl3> ]* ]
   }
   token pl5 {
     [ <pl4> [ $<op> = [ '+' | '-' | '.+' | '.-' | '+&' | '+|' | '+Q' ] <pl4> ]* ]
@@ -92,14 +102,38 @@ grammar U {
   }
 }
 
+class Uctions {
+
+}
+
 sub MAIN(Str $file, Bool :$casual, Bool :$hardcore) {
   if ($casual && $hardcore) {
-    note "It is not possible to be casual and hardcore simultaneously.";
+    note qq:to/STUPID/;
+    $U are stupid and think you can be casual and hardcore simultaneously.
+    $U have little knowledge of vocabulary.
+    STUPID
     exit 1;
   } elsif ($casual) {
-    note "User is a filthy casual who can't use their brain.";
+    note qq:to/CASUAL/;
+    $U are casual, and $U can hardly think.
+    $U were probably dropped on the head shortly after birth.
+    CASUAL
   }
-  my $src = $file.IO.slurp.trim;
-  say $src;
-  say U.parse: $src;
+  say i2f(3);
+  say f2i(Num(0.9));
+  try {
+    my $src = $file.IO.slurp.trim;
+    say $src;
+    say U.parse: $src;
+    CATCH {
+      when / "Failed to open file" / {
+        note qq:to/NOFILE/;
+        $U think $U fed something to the dragon,
+        but $U fed only thin air.
+        Shame on $U.
+        NOFILE
+        exit 1;
+      }
+    }
+  }
 }

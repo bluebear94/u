@@ -37,7 +37,7 @@ grammar U {
   }
   token sep { \v | ':' }
   token cflow {
-    [ $<keyword> = [ '?' | '?@' | '?@!' ] <cond=.expression> <sep> <body=.expression>] |
+    [ $<keyword> = [ '?' | '?@!' | '?@' ] <cond=.expression> <sep> <body=.expression>] |
     [ $<keyword> = [ '?!' ] <cond=.expression> <sep> <tbody=.expression> <fbody=.expression> ]
   }
   token intrinsicStatement {
@@ -68,7 +68,7 @@ grammar U {
     [ '(' <expression> ')'? ] # | [ <expression> ')' ]
   }
   token pl1 {
-    [ $<op> = <[ * P T ]> <pl0> ] |
+    [ $<op> = <[ * P T ]> <pl1> ] |
     [ <pl0> $<op> = <[ F I ]>? ]
   }
   token pl2 {

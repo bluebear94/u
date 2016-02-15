@@ -148,9 +148,9 @@ class Uctions {
       $<func-identifier>.made // $<block-identifier>.made;
   }
   method lvalue($/) {
-    if ($<list-identifier>.defined) { $/.make: [LIndex, $<list-identifier>.made, $<expression>.made]; }
-    if ($<identifier>.defined) { $/.make: return $<identifier>.made; }
-    return $/.make: [LDeref, $<expression>];
+    if ($<list-identifier>.defined) { return $/.make: [LIndex, $<list-identifier>.made, $<expression>.made]; }
+    if ($<identifier>.defined) { return $/.make: $<identifier>.made; }
+    return $/.make: [LDeref, $<expression>.made];
   }
   method sep($/) {
     return "What the heck are $U doing?!!";
@@ -195,7 +195,7 @@ class Uctions {
       :F(I2F),
       :I(F2I);
     return $/.make: $<pl0>.made if !~$<op>;
-    $/.make: [%lut{$<op>}, $<pl0>.made];
+    $/.make: [%lut{$<op>}, $<pl0>.made // $<pl1>.made];
   }
   method pl2($/) {
     if $<op>.defined {

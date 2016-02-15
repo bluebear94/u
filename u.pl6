@@ -102,8 +102,7 @@ grammar U {
     [ <pl8> [ ',' <pl8> ]* ( ','? ) ]
   }
   token pl10 {
-    [ $<op> = [ 'R+' | 'R~' | 'R~~' | 'R.' | [ D (<[ ~ + . ]>) ** 2 ] ] <pl9> ] |
-    <pl9>
+    [ $<op> = [ 'R+' | 'R~' | 'R~~' | 'R.' | [ D (<[ ~ + . ]>) ** 2 ] ]? <pl9> ]
   }
   token expression {
     <pl10>
@@ -321,7 +320,7 @@ class Uctions {
     $/.make: [ListOf, $<pl8>».made];
   }
   method pl10($/) {
-    return $/.make: $<pl9>.made if !$<op>.defined;
+    return $/.make: $<pl9>.made if !~$<op>;
     given ord ~$<op> {
       when 82 {
         my %table =

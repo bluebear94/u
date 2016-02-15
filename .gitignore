@@ -2,3 +2,4 @@ profile-*.html
 *.so
 *.dll
 *.o
+lib/.precomp

@@ -81,7 +81,7 @@ grammar U {
     ( <[ # $ ]>+ ) ( '^'? )
   }
   token pl4 {
-    [ <pl3> [ $<op> = [ '/' | './' | '.*' | '+<' | '+>' | '+<^' | '+>^' ]? <pl3> ]* ]
+    [ <pl3> [ $<op> = [ '/' | './' | '.*' | '%' | '.%' | '+<' | '+>' | '+<^' | '+>^' ]? <pl3> ]* ]
   }
   token pl4h {
     [ <left=.pl4> [ <beo> <right=.pl4> ]? ]
@@ -109,7 +109,7 @@ grammar U {
   }
 }
 
-enum ASTType <Digit Name Ans LIndex LDeref If IfElse While Repeat IntrinsicStatement Assign Block Function Deref Pred Succ I2F F2I Trig Hyp TT FTT BI Div FDiv Mul FMul RL RR ShL ShR Add FAdd Subt FSubt BAnd BOr BXor Eq Lt Gt FEq FLt FGt Not BNot And Or Xor ListOf ReadInt ReadChars ReadLine ReadFloat Convert>;
+enum ASTType <Digit Name Ans LIndex LDeref If IfElse While Repeat IntrinsicStatement Assign CBlock Function Deref Pred Succ I2F F2I Trig Hyp TT FTT BI Div FDiv Mod FMod Mul FMul RL RR ShL ShR Add FAdd Subt FSubt BAnd BOr BXor Eq Lt Gt FEq FLt FGt Not BNot And Or Xor ListOf ReadInt ReadChars ReadLine ReadFloat Convert>;
 enum DataTypes <DInt DFloat DList>;
 
 class Uctions {
@@ -174,7 +174,7 @@ class Uctions {
     $/.make: $<intrinsicStatement>.made // $<cflow>.made // $<assignment>.made;
   }
   method block($/) {
-    $/.make: [Block, $<body>.made];
+    $/.make: [CBlock, $<body>.made];
   }
   method function($/) {
     $/.make: [Function, $<retval>.made];
@@ -260,6 +260,8 @@ class Uctions {
     my %table =
       "/" => Div,
       "./" => FDiv,
+      "%" => Mod,
+      ".%" => FMod,
       "" => Mul,
       ".*" => FMul,
       "+<" => RL,
@@ -344,6 +346,101 @@ class Uctions {
   }
 }
 
+sub down(Int $a) {
+  my int64 $d = $a;
+  return $d;
+}
+
+sub both-digits(@ao, @bo) {
+  return @ao[0] == Digit && @bo[0] == Digit;
+}
+
+sub is-digit(@ao) {
+  return @ao[0] == Digit;
+}
+
+sub digit-op(&f) {
+  -> @a, @b { [Digit, f(@a[1], @b[1])] };
+}
+
+sub digit-op1(&f) {
+  -> @a { [Digit, f(@a[1])] };
+}
+
+sub optimize-op(@s, &c, &f) {
+  my @ao = optimize @s[1];
+  my @bo = optimize @s[2];
+  return f(@ao, @bo) if c(@ao, @bo);
+  return [@s[0], @ao, @bo];
+}
+
+sub optimize-op1(@s, &c, &f) {
+  my @ao = optimize @s[1];
+  return f(@ao) if c(@ao);
+  return [@s[0], @ao];
+}
+
+sub optimize($a) {
+  my @ast = $a ~~ Positional ?? $a.list !! [$a];
+  say @ast;
+  given @ast[0] {
+    when Add {
+      return optimize-op(@ast, &both-digits, digit-op({ $^a + $^b }));
+    }
+    when Subt {
+      return optimize-op(@ast, &both-digits, digit-op({ $^a - $^b }));
+    }
+    when Mul {
+      return optimize-op(@ast, &both-digits, digit-op({ $^a * $^b }));
+    }
+    when Div {
+      return optimize-op(@ast, &both-digits, digit-op({ down($^a) div down($^b) }));
+    }
+    when Mod {
+      return optimize-op(@ast, &both-digits, digit-op({ down($^a) % down($^b) }));
+    }
+    when TT {
+      return optimize-op(@ast, &both-digits, digit-op({ $^a ** $^b }));
+    }
+    when Lt {
+      return optimize-op(@ast, &both-digits, digit-op({ $^a < $^b }));
+    }
+    when Gt {
+      return optimize-op(@ast, &both-digits, digit-op({ $^a > $^b }));
+    }
+    when Eq {
+      return optimize-op(@ast, &both-digits, digit-op({ $^a == $^b }));
+    }
+    when I2F {
+      return optimize-op1(@ast, &is-digit, digit-op1({ f2i($_.Num) }));
+    }
+    when F2I {
+      return optimize-op1(@ast, &is-digit, digit-op1({ i2f($_.Int) }));
+    }
+    when any(If, While, Repeat) {
+      return [@ast[0], optimize(@ast[1]), optimize(@ast[2])];
+    }
+    when IfElse {
+      return [@ast[0], optimize(@ast[1]), optimize(@ast[2]), optimize(@ast[3])];
+    }
+    when ListOf {
+      return [ListOf, map(&optimize, @ast[1]).Array];
+    }
+    when IntrinsicStatement {
+      return [IntrinsicStatement, @ast[1], optimize(@ast[2])];
+    }
+    when CBlock {
+      return [CBlock, map(&optimize, @ast[1]).Array];
+    }
+    when Positional {
+      return map(&optimize, @ast).Array;
+    }
+    default {
+      return @ast;
+    }
+  }
+}
+
 sub MAIN(Str $file, Bool :$casual, Bool :$hardcore) {
   if ($casual && $hardcore) {
     note qq:to/STUPID/;
@@ -362,7 +459,7 @@ sub MAIN(Str $file, Bool :$casual, Bool :$hardcore) {
   try {
     my $src = $file.IO.slurp.trim;
     say $src;
-    say U.parse($src, actions => Uctions).made;
+    say U.parse($src, actions => Uctions).made.&optimize;
     CATCH {
       when / "Failed to open file" / {
         note qq:to/NOFILE/;

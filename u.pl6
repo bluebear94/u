@@ -31,9 +31,9 @@ grammar U {
     <func-identifier> | <block-identifier>
   }
   token lvalue {
+    [ '*' <expression> ] |
     [ <list-identifier> <expression>? ] |
-    <identifier> |
-    [ '*' | <expression> ]
+    <identifier>
   }
   token sep { \v | ':' }
   token cflow {
@@ -431,6 +431,12 @@ sub optimize($a) {
     }
     when CBlock {
       return [CBlock, map(&optimize, @ast[1]).Array];
+    }
+    when Assign {
+      return [Assign, optimize(@ast[1]), optimize(@ast[2])];
+    }
+    when LDeref {
+      return [LDeref, optimize(@ast[1])];
     }
     when Positional {
       return map(&optimize, @ast).Array;
